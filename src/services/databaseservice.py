@@ -3,13 +3,13 @@ import pymongo
 import os, datetime
 
 class DatabaseService:
-    def __init__(self):
+    def __init__(self, is_prod: bool = False):
         connection_url = os.getenv('SINGLESTORE_CONNECTION_URL')
         if not connection_url:
             raise ValueError("SINGLESTORE_CONNECTION_URL environment variable not set")
         
         self.client = pymongo.MongoClient(connection_url)
-        self.db = self.client.test
+        self.db = self.client.test if not is_prod else self.client.prod
 
     def database_count(self, collection_name: str):
         return self.db[collection_name].count_documents({})
