@@ -5,5 +5,5 @@ load_dotenv()
 
 ocrservice = OCRService()
 
-result = ocrservice.extract_text("./assets/images/hbrbook1-test.jpg")
+result = ocrservice.extract_text("./assets/images/blurred-image-test.png")
 print(result)

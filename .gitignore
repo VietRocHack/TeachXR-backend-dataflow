@@ -166,3 +166,6 @@ assets/
 
 # Google Cloud API keys
 keys/
+
+# Output files
+output/
