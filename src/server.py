@@ -1,20 +1,23 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response, send_file
+from io import BytesIO
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from services.ocrservice import OCRService
 from services.databaseservice import DatabaseService
 from dotenv import load_dotenv
 from bson import Binary
-import os
+import os, base64
+import json
 
 
 load_dotenv()
 
-IS_PROD = bool(os.getenv("IS_PROD")) # Set to True when deploying to production
+IS_PROD = os.getenv("IS_PROD") == "True" # Set to True when deploying to production
+print(f"Running in production: {IS_PROD}")
 
 app = Flask(__name__)
-socketio = SocketIO(app)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 HTTP_OK = 200
 HTTP_BAD_REQUEST = 400
@@ -49,7 +52,7 @@ def image_ocr():
     except Exception as e:
         return jsonify({"error": str(e)}), HTTP_ERROR
     
-    socketio.emit("new_document", "OK")
+    socketio.emit("newData", text)
     
     return text, HTTP_OK
 
@@ -59,9 +62,15 @@ def get_latest():
         latest_text = database_service.get_latest_from_database("vision_data")
     except Exception as e:
         return jsonify({"error": str(e)}), HTTP_ERROR
-    
-    return latest_text, HTTP_OK
+    image_bytesio = BytesIO(latest_text['image'])
+    image_bytesio.seek(0)
+    response = make_response(send_file(image_bytesio, download_name="image.png", as_attachment=True))
+    extra_data = {
+        "text": latest_text['text'],
+        "timestamp": str(latest_text['timestamp'])
+    }
+    response.headers['X-Extra-Data'] = base64.b64encode(json.dumps(extra_data).encode()).decode()
+    return response, HTTP_OK
 
 if __name__ == '__main__':
-    # app.run(port=5000, debug=not IS_PROD)
-    socketio.run(app, port=5000, debug=not IS_PROD)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=not IS_PROD)
